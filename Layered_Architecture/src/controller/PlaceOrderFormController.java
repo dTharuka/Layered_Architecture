@@ -3,6 +3,7 @@ package controller;
 import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXComboBox;
 import com.jfoenix.controls.JFXTextField;
+import dao.PurchaseDAO;
 import dao.PurchaseOrderDAOImpl;
 import db.DBConnection;
 import javafx.application.Platform;
@@ -52,6 +53,7 @@ public class PlaceOrderFormController {
     public Label lblId;
     public Label lblDate;
     public Label lblTotal;
+    PurchaseDAO purchaseOrderDAO = new PurchaseOrderDAOImpl();
     private String orderId;
 
     public void initialize() throws SQLException, ClassNotFoundException {
@@ -97,7 +99,7 @@ public class PlaceOrderFormController {
 
             if (newValue != null) {
                 try {
-                    /*Search Customer*/
+//                    Search Customer
                     Connection connection = DBConnection.getDbConnection().getConnection();
                     try {
                         if (!existCustomer(newValue + "")) {
@@ -116,10 +118,9 @@ public class PlaceOrderFormController {
                         new Alert(Alert.AlertType.ERROR, "Failed to find the customer " + newValue + "" + e).show();
                     }
 
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
+                } catch (SQLException troubles) {
+                    troubles.printStackTrace();
+                } catch (ClassNotFoundException ignored) {
                 }
             } else {
                 txtCustomerName.clear();
@@ -133,7 +134,7 @@ public class PlaceOrderFormController {
 
             if (newItemCode != null) {
 
-                /*Find Item*/
+//                Find Item
                 try {
                     if (!existItem(newItemCode + "")) {
 //                        throw new NotFoundException("There is no such item associated with the id " + code);
@@ -143,7 +144,10 @@ public class PlaceOrderFormController {
                     pstm.setString(1, newItemCode + "");
                     ResultSet rst = pstm.executeQuery();
                     rst.next();
-                    ItemDTO item = new ItemDTO(newItemCode + "", rst.getString("description"), rst.getBigDecimal("unitPrice"), rst.getInt("qtyOnHand"));
+                    ItemDTO item = new ItemDTO(newItemCode + "",
+                            rst.getString("description"),
+                            rst.getBigDecimal("unitPrice"),
+                            rst.getInt("qtyOnHand"));
 
                     txtDescription.setText(item.getDescription());
                     txtUnitPrice.setText(item.getUnitPrice().setScale(2).toString());
@@ -152,10 +156,9 @@ public class PlaceOrderFormController {
                     Optional<OrderDetailTM> optOrderDetail = tblOrderDetails.getItems().stream().filter(detail -> detail.getCode().equals(newItemCode)).findFirst();
                     txtQtyOnHand.setText((optOrderDetail.isPresent() ? item.getQtyOnHand() - optOrderDetail.get().getQty() : item.getQtyOnHand()) + "");
 
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
+                } catch (SQLException throwable) {
+                    throwable.printStackTrace();
+                } catch (ClassNotFoundException ignored) {
                 }
 
             } else {
@@ -188,59 +191,22 @@ public class PlaceOrderFormController {
     }
 
     private boolean existItem(String code) throws SQLException, ClassNotFoundException {
-//        Connection connection = DBConnection.getDbConnection().getConnection();
-//        PreparedStatement pstm = connection.prepareStatement("SELECT code FROM Item WHERE code=?");
-//        pstm.setString(1, code);
-//        return pstm.executeQuery().next();
-
-        PurchaseOrderDAOImpl purchaseOrderDAO = new PurchaseOrderDAOImpl();
         return purchaseOrderDAO.existItem(code);
     }
 
     boolean existCustomer(String id) throws SQLException, ClassNotFoundException {
-//        Connection connection = DBConnection.getDbConnection().getConnection();
-//        PreparedStatement pstm = connection.prepareStatement("SELECT id FROM Customer WHERE id=?");
-//        pstm.setString(1, id);
-//        return pstm.executeQuery().next();
-
-        PurchaseOrderDAOImpl purchaseOrderDAO = new PurchaseOrderDAOImpl();
         return purchaseOrderDAO.existCustomer(id);
     }
 
-    public String generateNewOrderId() {
-        try {
-            Connection connection = DBConnection.getDbConnection().getConnection();
-            Statement stm = connection.createStatement();
-            ResultSet rst = stm.executeQuery("SELECT oid FROM `Orders` ORDER BY oid DESC LIMIT 1;");
 
-            return rst.next() ? String.format("OID-%03d", (Integer.parseInt(rst.getString("oid").replace("OID-", "")) + 1)) : "OID-001";
-        } catch (SQLException e) {
-            new Alert(Alert.AlertType.ERROR, "Failed to generate a new order id").show();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return "OID-001";
+    public String generateNewOrderId() {
+        return purchaseOrderDAO.generateNewOrderId();
     }
 
-    private void loadAllCustomerIds() {
-//        try {
-//            Connection connection = DBConnection.getDbConnection().getConnection();
-//            Statement stm = connection.createStatement();
-//            ResultSet rst = stm.executeQuery("SELECT * FROM Customer");
-//
-//            while (rst.next()) {
-//                cmbCustomerId.getItems().add(rst.getString("id"));
-//            }
-//
-//        } catch (SQLException e) {
-//            new Alert(Alert.AlertType.ERROR, "Failed to load customer ids").show();
-//        } catch (ClassNotFoundException e) {
-//            e.printStackTrace();
-//        }
 
+    private void loadAllCustomerIds() {
         try {
 
-            PurchaseOrderDAOImpl purchaseOrderDAO = new PurchaseOrderDAOImpl();
             purchaseOrderDAO.loadAllCustomerIds(cmbCustomerId);
 
         } catch (SQLException e) {
@@ -250,25 +216,9 @@ public class PlaceOrderFormController {
     }
 
     private void loadAllItemCodes() {
-//        try {
-//            /*Get all items*/
-//            Connection connection = DBConnection.getDbConnection().getConnection();
-//            Statement stm = connection.createStatement();
-//            ResultSet rst = stm.executeQuery("SELECT * FROM Item");
-//            while (rst.next()) {
-//                cmbItemCode.getItems().add(rst.getString("code"));
-//            }
-//        } catch (SQLException e) {
-//            new Alert(Alert.AlertType.ERROR, e.getMessage()).show();
-//        } catch (ClassNotFoundException e) {
-//            e.printStackTrace();
-//        }
-
         try {
 
-            PurchaseOrderDAOImpl purchaseOrderDAO = new PurchaseOrderDAOImpl();
             purchaseOrderDAO.loadAllItemCode(cmbItemCode);
-
 
         } catch (SQLException e) {
             new Alert(Alert.AlertType.ERROR, e.getMessage()).show();
@@ -278,11 +228,8 @@ public class PlaceOrderFormController {
 
     @FXML
     private void navigateToHome(MouseEvent event) throws IOException {
-        URL resource = this.getClass().getResource("/view/main-form.fxml");
-        Parent root = FXMLLoader.load(resource);
-        Scene scene = new Scene(root);
         Stage primaryStage = (Stage) (this.root.getScene().getWindow());
-        primaryStage.setScene(scene);
+        primaryStage.setScene(new Scene(FXMLLoader.load(this.getClass().getResource("/view/main-form.fxml"))));
         primaryStage.centerOnScreen();
         Platform.runLater(() -> primaryStage.sizeToScene());
     }
@@ -332,7 +279,8 @@ public class PlaceOrderFormController {
         for (OrderDetailTM detail : tblOrderDetails.getItems()) {
             total = total.add(detail.getTotal());
         }
-        lblTotal.setText("Total: " +total);
+
+        lblTotal.setText("Total: " + total);
     }
 
     private void enableOrDisablePlaceOrderButton() {
@@ -344,7 +292,8 @@ public class PlaceOrderFormController {
 
     public void btnPlaceOrder_OnAction(ActionEvent actionEvent) {
         boolean b = saveOrder(orderId, LocalDate.now(), cmbCustomerId.getValue(),
-                tblOrderDetails.getItems().stream().map(tm -> new OrderDetailDTO(tm.getCode(), tm.getQty(), tm.getUnitPrice())).collect(Collectors.toList()));
+                tblOrderDetails.getItems().stream().map(tm -> new OrderDetailDTO
+                        (tm.getCode(), tm.getQty(), tm.getUnitPrice())).collect(Collectors.toList()));
 
         if (b) {
             new Alert(Alert.AlertType.INFORMATION, "Order has been placed successfully").show();
@@ -362,13 +311,13 @@ public class PlaceOrderFormController {
     }
 
     public boolean saveOrder(String orderId, LocalDate orderDate, String customerId, List<OrderDetailDTO> orderDetails) {
-        /*Transaction*/
-        Connection connection = null;
+//        Transaction
+                Connection connection = null;
         try {
             connection = DBConnection.getDbConnection().getConnection();
             PreparedStatement stm = connection.prepareStatement("SELECT oid FROM `Orders` WHERE oid=?");
             stm.setString(1, orderId);
-            /*if order id already exist*/
+//            if order id already exist
             if (stm.executeQuery().next()) {
 
             }
@@ -422,28 +371,15 @@ public class PlaceOrderFormController {
 
         } catch (SQLException throwables) {
             throwables.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (ClassNotFoundException ignored) {
         }
         return false;
     }
 
 
-    public ItemDTO findItem(String code) {
-        try {
-            Connection connection = DBConnection.getDbConnection().getConnection();
-            PreparedStatement pstm = connection.prepareStatement("SELECT * FROM Item WHERE code=?");
-            pstm.setString(1, code);
-            ResultSet rst = pstm.executeQuery();
-            rst.next();
-            return new ItemDTO(code, rst.getString("description"), rst.getBigDecimal("unitPrice"), rst.getInt("qtyOnHand"));
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to find the Item " + code, e);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
+    public ItemDTO findItem(String code) throws SQLException, ClassNotFoundException {
+        return purchaseOrderDAO.findItem(code);
 
+    }
 
 }

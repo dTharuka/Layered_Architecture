@@ -2,6 +2,7 @@ package controller;
 
 import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXTextField;
+import dao.CustomerDAO;
 import dao.CustomerDAOImpl;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -31,6 +32,7 @@ import java.util.List;
  **/
 
 public class ManageCustomersFormController {
+    private final CustomerDAO customerDAO = new CustomerDAOImpl();
     public AnchorPane root;
     public JFXTextField txtCustomerName;
     public JFXTextField txtCustomerId;
@@ -56,36 +58,30 @@ public class ManageCustomersFormController {
                 txtCustomerId.setText(newValue.getId());
                 txtCustomerName.setText(newValue.getName());
                 txtCustomerAddress.setText(newValue.getAddress());
-
                 txtCustomerId.setDisable(false);
                 txtCustomerName.setDisable(false);
                 txtCustomerAddress.setDisable(false);
             }
         });
-
         txtCustomerAddress.setOnAction(event -> btnSave.fire());
         loadAllCustomers();
     }
 
     private void loadAllCustomers() {
         tblCustomers.getItems().clear();
-        /*Get all customers*/
+//        Get all customers
         try {
-
-            CustomerDAOImpl customerDAO = new CustomerDAOImpl();
             ArrayList<CustomerDTO> allCustomers = customerDAO.getAllCustomers();
 
             for (CustomerDTO customer : allCustomers) {
-                tblCustomers.getItems().add(new CustomerTM(customer.getId(), customer.getName(), customer.getAddress()));
+                tblCustomers.getItems().add(new CustomerTM(
+                        customer.getId(),
+                        customer.getName(),
+                        customer.getAddress()));
             }
-
-        } catch (SQLException e) {
-            new Alert(Alert.AlertType.ERROR, e.getMessage()).show();
-        } catch (ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             new Alert(Alert.AlertType.ERROR, e.getMessage()).show();
         }
-
-
     }
 
     private void initUI() {
@@ -102,11 +98,8 @@ public class ManageCustomersFormController {
 
     @FXML
     private void navigateToHome(MouseEvent event) throws IOException {
-        URL resource = this.getClass().getResource("/view/main-form.fxml");
-        Parent root = FXMLLoader.load(resource);
-        Scene scene = new Scene(root);
         Stage primaryStage = (Stage) (this.root.getScene().getWindow());
-        primaryStage.setScene(scene);
+        primaryStage.setScene(new Scene(FXMLLoader.load(this.getClass().getResource("/view/main-form.fxml"))));
         primaryStage.centerOnScreen();
         Platform.runLater(() -> primaryStage.sizeToScene());
     }
@@ -142,39 +135,33 @@ public class ManageCustomersFormController {
         }
 
         if (btnSave.getText().equalsIgnoreCase("save")) {
-            /*Save Customer*/
+//            Save Customer
             try {
                 if (existCustomer(id)) {
                     new Alert(Alert.AlertType.ERROR, id + " already exists").show();
                 }
 
-                CustomerDAOImpl customerDAO = new CustomerDAOImpl();
+
                 customerDAO.saveCustomer(new CustomerDTO(id, name, address));
 
                 tblCustomers.getItems().add(new CustomerTM(id, name, address));
             } catch (SQLException e) {
                 new Alert(Alert.AlertType.ERROR, "Failed to save the customer " + e.getMessage()).show();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+            } catch (ClassNotFoundException ignored) {
             }
 
 
         } else {
-            /*Update customer*/
+//            Update customer
             try {
                 if (!existCustomer(id)) {
                     new Alert(Alert.AlertType.ERROR, "There is no such customer associated with the id " + id).show();
                 }
-
                 //Customer update
-                CustomerDAOImpl customerDAO = new CustomerDAOImpl();
                 customerDAO.updateCustomer(new CustomerDTO(id, name, address));
-
-
             } catch (SQLException e) {
                 new Alert(Alert.AlertType.ERROR, "Failed to update the customer " + id + e.getMessage()).show();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+            } catch (ClassNotFoundException ignored) {
             }
 
             CustomerTM selectedCustomer = tblCustomers.getSelectionModel().getSelectedItem();
@@ -188,54 +175,51 @@ public class ManageCustomersFormController {
 
 
     boolean existCustomer(String id) throws SQLException, ClassNotFoundException {
-        CustomerDAOImpl customerDAO = new CustomerDAOImpl();
         return customerDAO.existCustomer(id);
     }
 
 
     public void btnDelete_OnAction(ActionEvent actionEvent) {
-        /*Delete Customer*/
+//        Delete Customer
         String id = tblCustomers.getSelectionModel().getSelectedItem().getId();
         try {
             if (!existCustomer(id)) {
                 new Alert(Alert.AlertType.ERROR, "There is no such customer associated with the id " + id).show();
             }
 
-            CustomerDAOImpl customerDAO = new CustomerDAOImpl();
             customerDAO.deleteCustomer(id);
-
             tblCustomers.getItems().remove(tblCustomers.getSelectionModel().getSelectedItem());
             tblCustomers.getSelectionModel().clearSelection();
             initUI();
 
         } catch (SQLException e) {
             new Alert(Alert.AlertType.ERROR, "Failed to delete the customer " + id).show();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (ClassNotFoundException ignored) {
         }
     }
 
     private String generateNewId() {
         try {
 
-            CustomerDAOImpl customerDAO = new CustomerDAOImpl();
             return customerDAO.generateNewID();
 
         } catch (SQLException e) {
             new Alert(Alert.AlertType.ERROR, "Failed to generate a new id " + e.getMessage()).show();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (ClassNotFoundException ignored) {
         }
 
 
         if (tblCustomers.getItems().isEmpty()) {
+
             return "C00-001";
+
         } else {
+
             String id = getLastCustomerId();
             int newCustomerId = Integer.parseInt(id.replace("C", "")) + 1;
             return String.format("C00-%03d", newCustomerId);
-        }
 
+        }
     }
 
     private String getLastCustomerId() {
